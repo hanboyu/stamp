@@ -4,6 +4,7 @@ import time
 import argparse
 import pandas as pd
 import numpy as np
+import os
 
 from ..STAMPSender import STAMPSessionSender
 from ..utils_ipv4 import (AuthenticationMode, 
@@ -32,17 +33,20 @@ def gen_src_ports(num_ports, seed):
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--file_path", type=str, required=True, help="Path to save the probing result")
-    parser.add_argument("--sender_ip", type=str, default="128.238.147.69", help="IPv4 address of sender")
-    parser.add_argument("--sender_iface", type=str, nargs='+', default=["ens160"], help="Network interface of the sender")
-    parser.add_argument("--reflector_ip", type=str, default="128.238.147.71", help="IPv4 address of reflector")
+    parser.add_argument("--exp_name", required=True, type=str, help="Name of the experiment")
+    parser.add_argument("--save_dir", required=True, type=str, help="Directory path to save the probing result")
+    parser.add_argument("--sender_ip", required=True, type=str, help="IPv4 address of sender")
+    parser.add_argument("--sender_iface", required=True, type=str, nargs='+', help="Network interface of the sender")
+    parser.add_argument("--reflector_ip", required=True, type=str, help="IPv4 address of reflector")
     parser.add_argument("--reflector_port", type=int, default=862, help="Reflector UDP port")
     
+    parser.add_argument("--src_ports", type=int, nargs='+', default=[], help="Source ports used to send STAMP packets")
     parser.add_argument("--num_flows", type=int, default=10, help="Number of flows")
+    
     parser.add_argument("--duration", type=int, default=60, help="Duration of the probing in seconds")
     parser.add_argument("--rate", type=int, default=10, help="Probing rage in pkts/s")
 
-    parser.add_argument("--saving_period", type=int, default=600, help="The number of seconds for the system to save the data to disk to free up RAM space. Default = 10 min")
+    parser.add_argument("--saving_period", type=int, default=1, help="The number of seconds for the system to save the data to disk to free up RAM space. Default = 1 seconds")
     parser.add_argument("--set_seed", type=int, default=0, help="set seed for random functions")
 
 
@@ -57,6 +61,18 @@ def main():
     logging.basicConfig()
     # logging.getLogger().setLevel(logging.DEBUG)
 
+    # Parse arguments
+    if len(args.src_ports) == 0:
+        # Generate source port numbers
+        args.src_ports = gen_src_ports(args.num_flows, args.set_seed)
+    else:
+        args.num_flows = len(args.src_ports)
+
+    flow_info_filename = os.path.join(args.save_dir, args.exp_name + "_flow_info.csv")
+    raw_data_filename = os.path.join(args.save_dir, args.exp_name + "_raw.csv")
+    rtt_data_filename = os.path.join(args.save_dir, args.exp_name + "_rtt.dat")
+
+
     # Create CSV file for saving data
     headers = {
         "ssid": [],
@@ -67,10 +83,8 @@ def main():
         
     }
     df_headers = pd.DataFrame(headers)
-    df_headers.to_csv(args.file_path + "_raw.csv", index=False)
+    df_headers.to_csv(raw_data_filename, index=False)
 
-    # Generate source port numbers
-    src_ports = gen_src_ports(args.num_flows, args.set_seed)
 
     # Create a STAMP Session Sender object
     sender = STAMPSessionSender()
@@ -78,7 +92,6 @@ def main():
         reflector_udp_port=args.reflector_port,
         interfaces=args.sender_iface, 
         stamp_source_ipv4_address=args.sender_ip, 
-        
     )
 
     # Create ans start STAMP sessions 
@@ -94,8 +107,31 @@ def main():
             packet_loss_type=PacketLossType.PACKET_LOSS_TYPE_ROUND_TRIP,
             delay_measurement_mode=DelayMeasurementMode.DELAY_MEASUREMENT_MODE_TWO_WAY,
             reflector_udp_port=args.reflector_port, 
-            sender_udp_port=src_ports[i]
+            sender_udp_port=args.src_ports[i]
         )
+
+    # Start all sessions
+    [sender.start_stamp_session(i, only_collector=False) for i in range(args.num_flows)]
+
+    # Wait
+    end_time = time.perf_counter() + args.duration
+    remaining_time = end_time - time.perf_counter()
+    try:
+        while remaining_time > args.saving_period:
+            time.sleep(args.saving_period)
+            # Appending current data to disk to free up RAM space
+            append_results_to_csv(sender, args.num_flows, raw_data_filename)
+            remaining_time = end_time - time.perf_counter()
+        time.sleep(remaining_time)
+    except KeyboardInterrupt:
+        print('\nCTRL+C caught. Graceful stopping...')
+
+    # Stop all session
+    [sender.stop_stamp_session(ssid=i) for i in range(args.num_flows)]
+
+    # Save raw data to CSV
+    append_results_to_csv(sender, args.num_flows, raw_data_filename)
+
 
     # save flow info
     flow_info = {
@@ -114,34 +150,12 @@ def main():
         flow_info["dst_port"].append(sender.stamp_sessions[i].reflector_recv_port)
         flow_info["interval"].append(sender.stamp_sessions[i].interval)
     flow_info_df = pd.DataFrame(flow_info)
-    flow_info_df.to_csv(args.file_path + "_flow_info.csv", index=False)
-
-    # Start all sessions
-    [sender.start_stamp_session(i, only_collector=False) for i in range(args.num_flows)]
-
-    # Wait
-    end_time = time.perf_counter() + args.duration
-    remaining_time = end_time - time.perf_counter()
-    try:
-        while remaining_time > args.saving_period:
-            time.sleep(args.saving_period)
-            # Appending current data to disk to free up RAM space
-            append_results_to_csv(sender, args.num_flows, args.file_path + "_raw.csv")
-            remaining_time = end_time - time.perf_counter()
-        time.sleep(remaining_time)
-    except KeyboardInterrupt:
-        print('\nCTRL+C caught. Graceful stopping...')
-
-    # Stop all session
-    [sender.stop_stamp_session(ssid=i) for i in range(args.num_flows)]
-
-    # Save raw data to CSV
-    append_results_to_csv(sender, args.num_flows, args.file_path + "_raw.csv")
+    flow_info_df.to_csv(flow_info_filename, index=False)
 
     # Parse RTT from raw data
-    raw_data_df = pd.read_csv(args.file_path + "_raw.csv")
+    raw_data_df = pd.read_csv(raw_data_filename)
     rtt_data_df = parse_rtt_by_flow(raw_data_df, 1)
-    rtt_data_df.to_csv(args.file_path + "_rtt.csv", index=False)
+    rtt_data_df.to_csv(rtt_data_filename, index=False, sep=" ")
 
     # Close all STAMP session
     [sender.destroy_stamp_session(ssid=i) for i in range(args.num_flows)]
