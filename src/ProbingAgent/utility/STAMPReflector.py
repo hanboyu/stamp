@@ -16,12 +16,12 @@ logger = logging.getLogger()
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--reflector_iface", type=str, default="ens160", help="Network interface of the sender")
-    parser.add_argument("--reflector_ip", type=str, default="128.238.147.71", help="IPv4 address of reflector")
-    parser.add_argument("--reflector_port", type=int, default=862, help="Reflector UDP port")
+    parser.add_argument("--reflector_iface", required=True, type=str, help="Network interface of the receiving STAMP packets")
+    parser.add_argument("--reflector_ip", required=True, type=str, help="IPv4 address of reflector")
+    parser.add_argument("--reflector_port", type=int, default=862, help="Reflector UDP port, default 862")
     
-    parser.add_argument("--num_flows", type=int, default=10, help="Number of flows")
-    parser.add_argument("--duration", type=int, default=-1, help="Duration of the probing in seconds")
+    parser.add_argument("--num_flows", type=int, default=10, help="Number of flows, default 10 flows")
+    parser.add_argument("--duration", type=int, default=-1, help="Duration of the probing in seconds or -1 to run indefinitely, default -1")
 
     args = parser.parse_args()
     return args
