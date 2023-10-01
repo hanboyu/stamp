@@ -1,4 +1,4 @@
-# stamp
+# STAMP
 A network measurement tool based on STAMP, Simple Two-Way Active Measurement Protocol (RFC 8762). 
 ## Download and Installation
 `pip install git+https://github.com/hanboyu/stamp.git`
