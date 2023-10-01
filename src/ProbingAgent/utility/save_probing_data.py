@@ -20,7 +20,7 @@ def parse_raw_data_to_pandas(raw_data):
         file_path (str): path to save the file
 
     Returns:
-        pandas.DataFrame: output of the pasared data
+        pandas.DataFrame: output of the parsed data
     """
     # merge list
     data = []
@@ -38,17 +38,17 @@ def parse_raw_data_to_pandas(raw_data):
     return data_df
 
 def parse_rtt_by_flow(data, sampling_rate):
-    # calcualte rtt
+    # calculate rtt
     data["rtt_s"] = (data["reply_pkt_rx_timestamp"] - data["test_pkt_tx_timestamp"])
 
     # Calculate time window
-    min_tamestamp = data["test_pkt_tx_timestamp"].min()
-    data["Time"] = ((data["test_pkt_tx_timestamp"] - min_tamestamp) // sampling_rate) * sampling_rate
+    min_timestamp = data["test_pkt_tx_timestamp"].min()
+    data["Time"] = ((data["test_pkt_tx_timestamp"] - min_timestamp) // sampling_rate) * sampling_rate
     
     # Get session IDs
     ssids = data["ssid"].unique()
 
-    # Calcualte average per flow
+    # Calculate average per flow
     res_df = data[["Time", "rtt_s"]]
     res_df = res_df.groupby(res_df['Time']).mean().reset_index()
 
@@ -56,6 +56,6 @@ def parse_rtt_by_flow(data, sampling_rate):
         temp_df = data.loc[data['ssid'] == ssid][["Time", "rtt_s"]]
         res_df[ssid] = temp_df.groupby(temp_df['Time']).mean()
     
-    res_df = res_df.rename(columns={"rtt_s": "aggregate_rtt"})
+    res_df = res_df.rename(columns={"rtt_s": "Aggregate-Flow"})
     
     return res_df

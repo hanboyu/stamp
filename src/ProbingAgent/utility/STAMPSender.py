@@ -34,7 +34,7 @@ def gen_src_ports(num_ports, seed):
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_name", required=True, type=str, help="Name of the experiment")
-    parser.add_argument("--save_dir", required=True, type=str, help="Directory path to save the probing result")
+    parser.add_argument("--save_dir", type=str, default="./", help="Directory path to save the probing result")
     parser.add_argument("--sender_ip", required=True, type=str, help="IPv4 address of sender")
     parser.add_argument("--sender_iface", required=True, type=str, nargs='+', help="Network interface of the sender")
     parser.add_argument("--reflector_ip", required=True, type=str, help="IPv4 address of reflector")
@@ -44,7 +44,7 @@ def parse_arguments():
     parser.add_argument("--num_flows", type=int, default=10, help="Number of flows")
     
     parser.add_argument("--duration", type=int, default=60, help="Duration of the probing in seconds")
-    parser.add_argument("--rate", type=int, default=10, help="Probing rage in pkts/s")
+    parser.add_argument("--rate", type=int, default=10, help="Probing rate in pkts/s")
 
     parser.add_argument("--saving_period", type=int, default=1, help="The number of seconds for the system to save the data to disk to free up RAM space. Default = 1 seconds")
     parser.add_argument("--set_seed", type=int, default=0, help="set seed for random functions")
