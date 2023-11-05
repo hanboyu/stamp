@@ -17,7 +17,8 @@ setup(
     entry_points={
         'console_scripts': [
             'STAMPSender = ProbingAgent.utility.STAMPSender:main',
-            'STAMPReflector = ProbingAgent.utility.STAMPReflector:main'
+            'STAMPReflector = ProbingAgent.utility.STAMPReflector:main',
+            'STAMPRaw2RTT = ProbingAgent.utility.STAMPRaw2RTT:main'
         ]
     }
 )
