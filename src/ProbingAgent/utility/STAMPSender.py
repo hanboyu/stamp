@@ -156,8 +156,9 @@ def main():
         kern_file[-1] = "xdp_prog_kern.o"
         kern_file = '/'.join(kern_file)
 
-        logging.info("Loading collector: '%s --dev %s --filename %s'" % (args.collector, args.sender_iface[0], kern_file))
-        os.system("%s --dev %s --filename %s" % (args.collector, args.sender_iface[0], kern_file))
+        load_collector_cmd = "%s --dev %s --filename %s --out-file %s --duration %d" % (args.collector, args.sender_iface[0], kern_file, raw_data_filename, args.duration)
+        logging.info("Loading collector: '%s'" % load_collector_cmd)
+        os.system(load_collector_cmd)
 
     # Stop all session
     [sender.stop_stamp_session(ssid=i) for i in range(args.num_flows)]
