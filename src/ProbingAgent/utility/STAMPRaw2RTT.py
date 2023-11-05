@@ -35,7 +35,7 @@ def parse_arguments():
     args = parser.parse_args()
     return args
 
-if __name__ == "__main__":
+def main():
     args = parse_arguments()
     
     # Configure logging
@@ -56,3 +56,7 @@ if __name__ == "__main__":
     rtt_data_df.to_csv(args.out_file, index=False, sep=args.sep)
 
     logging.info("RTT result saved to '%s'" % args.out_file)
+
+
+if __name__ == "__main__":
+    main()
