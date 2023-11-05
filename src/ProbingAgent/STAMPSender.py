@@ -471,7 +471,7 @@ class STAMPSessionSender:
             time.sleep(interval)
 
     def init(self, reflector_udp_port: int, interfaces: typing.List[str]=None,
-             stamp_source_ipv4_address: str=None):
+             stamp_source_ipv4_address: str=None, run_collector: bool=True):
         """
         Initialize the STAMP Session Sender and prepare it to run STAMP
         Sessions.
@@ -596,10 +596,11 @@ class STAMPSessionSender:
         # Create and start a new thread to listen for incoming STAMP Test
         # Reply packets
         
-        logger.info('Start sniffing...')
-        self.stamp_packet_receiver = self.build_stamp_reply_packets_sniffer()
-        logger.debug('Starting receive thread')
-        self.stamp_packet_receiver.start()
+        if run_collector:
+            logger.info('Start sniffing...')
+            self.stamp_packet_receiver = self.build_stamp_reply_packets_sniffer()
+            logger.debug('Starting receive thread')
+            self.stamp_packet_receiver.start()
 
         # Set "is_initialized" flag
         self.is_initialized = True
