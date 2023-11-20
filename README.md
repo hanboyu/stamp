@@ -40,6 +40,7 @@ STAMPSender --exp_name test_experiment --sender_ip <SENDER_IP> --sender_iface <S
 | `--duration <SECONDS>` | Duration of the probing in seconds. (Default 60 seconds) |
 | `--rate <RATE>` | Probing rate in pkts/s. (Default 10 pkts/s) |
 | `--set_seed <SEED>` | Set seed for random functions. (Default = 0) |
+| `--collector <PATH>` | Specify eBPF collector for parsing stamp reply packets and storing measurement results. Provide the path to eBPF collector user space executable file, `collector_user`. A kernel space `collector_kern.o` file must be located in the same directory as the executable file. Eg. `STAMPSender --exp_name test --collector /root/stamp-ebpf/src/collector/collector_user --sender_ip <SENDER_IP> --sender_iface <SENDER_IFACE> --reflector_ip <REFLECTOR_IP>`|
 
 ## Output File Structure
 
