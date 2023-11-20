@@ -6,7 +6,7 @@ import pandas as pd
 import numpy as np
 import os
 
-from ProbingAgent.STAMPSender import STAMPSessionSender
+from ProbingAgent.Sender import STAMPSessionSender
 from ProbingAgent.utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 
@@ -153,7 +153,7 @@ def main():
     else:
         # load collector
         kern_file = args.collector.split('/')
-        kern_file[-1] = "xdp_prog_kern.o"
+        kern_file[-1] = "collector_kern.o"
         kern_file = '/'.join(kern_file)
 
         load_collector_cmd = "%s --dev %s --filename %s --out-file %s --duration %d" % (args.collector, args.sender_iface[0], kern_file, raw_data_filename, args.duration)

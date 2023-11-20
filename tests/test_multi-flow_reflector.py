@@ -6,7 +6,7 @@ import unittest
 import time
 import argparse
 
-from ProbingAgent.STAMPReflector import STAMPSessionReflector
+from ProbingAgent.Reflector import STAMPSessionReflector
 from ProbingAgent.utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 
@@ -24,7 +24,7 @@ def parse_arguments():
     parser.add_argument("--reflector_port", type=int, default=862, help="Reflector UDP port")
     
     parser.add_argument("--num_flows", type=int, default=10, help="Number of flows")
-    parser.add_argument("--duration", type=int, default=-1, help="Duradion of the probing in seconds")
+    parser.add_argument("--duration", type=int, default=-1, help="Duration of the probing in seconds")
 
     args = parser.parse_args()
     return args

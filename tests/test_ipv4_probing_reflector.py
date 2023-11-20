@@ -5,7 +5,7 @@ from concurrent import futures
 import unittest
 import time
 
-from ProbingAgent.STAMPReflector import STAMPSessionReflector
+from ProbingAgent.Reflector import STAMPSessionReflector
 from ProbingAgent.utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 

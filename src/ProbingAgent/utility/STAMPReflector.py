@@ -3,7 +3,7 @@ from concurrent import futures
 import time
 import argparse
 
-from ..STAMPReflector import STAMPSessionReflector
+from ..Reflector import STAMPSessionReflector
 from ..utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 

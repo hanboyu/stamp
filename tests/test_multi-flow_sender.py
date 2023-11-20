@@ -7,7 +7,7 @@ import time
 import argparse
 import pandas as pd
 
-from ProbingAgent.STAMPSender import STAMPSessionSender
+from ProbingAgent.Sender import STAMPSessionSender
 from ProbingAgent.utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 
