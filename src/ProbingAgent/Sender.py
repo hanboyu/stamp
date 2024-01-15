@@ -116,7 +116,7 @@ class STAMPSessionSender:
         self.stamp_sessions = dict()
         # Sender sockets, place holder for the port number to prevent other 
         # applications from using the STAMP port
-        self.sender_sockets = dict()
+        # self.sender_sockets = dict()
         # Thread to send test packets
         # TODO: Those threads shoud be matined in the STAMPSession object
         self.sending_thread = dict()
@@ -471,7 +471,7 @@ class STAMPSessionSender:
             time.sleep(interval)
 
     def init(self, reflector_udp_port: int, interfaces: typing.List[str]=None,
-             stamp_source_ipv4_address: str=None):
+             stamp_source_ipv4_address: str=None, run_collector: bool=True):
         """
         Initialize the STAMP Session Sender and prepare it to run STAMP
         Sessions.
@@ -596,10 +596,11 @@ class STAMPSessionSender:
         # Create and start a new thread to listen for incoming STAMP Test
         # Reply packets
         
-        logger.info('Start sniffing...')
-        self.stamp_packet_receiver = self.build_stamp_reply_packets_sniffer()
-        logger.debug('Starting receive thread')
-        self.stamp_packet_receiver.start()
+        if run_collector:
+            logger.info('Start sniffing...')
+            self.stamp_packet_receiver = self.build_stamp_reply_packets_sniffer()
+            logger.debug('Starting receive thread')
+            self.stamp_packet_receiver.start()
 
         # Set "is_initialized" flag
         self.is_initialized = True
@@ -757,15 +758,15 @@ class STAMPSessionSender:
             raise NotImplementedError
         
         # Initializing sender socket
-        receiver_socket = socket.socket(
-            socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            receiver_socket.bind((self.stamp_source_ipv4_address, sender_udp_port))
-        except OSError as err:
-            logger.error('Cannot create UDP socket on (%s:%d): %s', self.stamp_source_ipv4_address, sender_udp_port, err)
-            # Return an error to the Controller
-            raise InternalError(msg=err)
-        logger.debug('Socket configured')
+        # receiver_socket = socket.socket(
+        #     socket.AF_INET, socket.SOCK_DGRAM)
+        # try:
+        #     receiver_socket.bind((self.stamp_source_ipv4_address, sender_udp_port))
+        # except OSError as err:
+        #     logger.error('Cannot create UDP socket on (%s:%d): %s', self.stamp_source_ipv4_address, sender_udp_port, err)
+        #     # Return an error to the Controller
+        #     raise InternalError(msg=err)
+        # logger.debug('Socket configured')
 
         # Initialize a new STAMP Session
         logger.debug('Initializing a new STAMP Session')
@@ -773,7 +774,7 @@ class STAMPSessionSender:
             ssid=ssid,
             reflector_ipv4_addr=reflector_ip,
             reflector_udp_port=reflector_udp_port,
-            sender_udp_port=receiver_socket.getsockname()[1],
+            sender_udp_port=sender_udp_port,
             auth_mode=auth_mode, key_chain=key_chain,
             timestamp_format=timestamp_format,
             packet_loss_type=packet_loss_type,
@@ -785,7 +786,7 @@ class STAMPSessionSender:
         
         # Add the STAMP session to the STAMP sessions dict
         self.stamp_sessions[ssid] = stamp_session
-        self.sender_sockets[ssid] = receiver_socket
+        # self.sender_sockets[ssid] = receiver_socket
 
         # We return the STAMP parameters to inform the caller about
         # the values chosen by the Sender for the optional parameters
@@ -979,8 +980,8 @@ class STAMPSessionSender:
         del self.stamp_sessions[ssid]
 
         # remove reciver socket
-        self.sender_sockets[ssid].close()
-        del self.sender_sockets[ssid]
+        # self.sender_sockets[ssid].close()
+        # del self.sender_sockets[ssid]
 
         # Success
         logger.debug('STAMP Session (SSID %d) destroyed', ssid)

@@ -198,7 +198,7 @@ class STAMPReplyPacket(Packet):
                    BitField('Z_sender', 0, 1),
                    BitField('scale_sender', 0, 6),
                    BitField('multiplier_sender', 1, 8),
-                   BitField('mbz', 0, 16),
+                   BitField('mbz16', 0, 16),
                    ByteField('sender_ttl', 255),
                    NBytesField('mbz', 0, 3)]  # 3 bytes MBZ
 

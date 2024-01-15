@@ -6,14 +6,14 @@ import pandas as pd
 import numpy as np
 import os
 
-from ..STAMPSender import STAMPSessionSender
-from ..utils_ipv4 import (AuthenticationMode, 
+from ProbingAgent.Sender import STAMPSessionSender
+from ProbingAgent.utils_ipv4 import (AuthenticationMode, 
                         DelayMeasurementMode, 
                         PacketLossType, 
                         SessionReflectorMode, 
                         TimestampFormat)
 
-from ..utility.save_probing_data import parse_raw_data_to_pandas, parse_rtt_by_flow
+from ProbingAgent.utility.save_probing_data import parse_raw_data_to_pandas, parse_rtt_by_flow
 
 # Get the root logger
 logger = logging.getLogger()
@@ -35,6 +35,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exp_name", required=True, type=str, help="Name of the experiment")
     parser.add_argument("--save_dir", type=str, default="./", help="Directory path to save the probing result")
+    
     parser.add_argument("--sender_ip", required=True, type=str, help="IPv4 address of sender")
     parser.add_argument("--sender_iface", required=True, type=str, nargs='+', help="Network interface of the sender")
     parser.add_argument("--reflector_ip", required=True, type=str, help="IPv4 address of reflector")
@@ -46,6 +47,7 @@ def parse_arguments():
     parser.add_argument("--duration", type=int, default=60, help="Duration of the probing in seconds")
     parser.add_argument("--rate", type=int, default=10, help="Probing rate in pkts/s")
 
+    parser.add_argument("--collector", type=str, default=None, help="Path to collector executable")
     parser.add_argument("--saving_period", type=int, default=1, help="The number of seconds for the system to save the data to disk to free up RAM space. Default = 1 seconds")
     parser.add_argument("--set_seed", type=int, default=0, help="set seed for random functions")
 
@@ -72,26 +74,13 @@ def main():
     raw_data_filename = os.path.join(args.save_dir, args.exp_name + "_raw.csv")
     rtt_data_filename = os.path.join(args.save_dir, args.exp_name + "_rtt.dat")
 
-
-    # Create CSV file for saving data
-    headers = {
-        "ssid": [],
-        "test_pkt_tx_timestamp": [],
-        "test_pkt_rx_timestamp": [],
-        "reply_pkt_tx_timestamp": [],
-        "reply_pkt_rx_timestamp": [],
-        
-    }
-    df_headers = pd.DataFrame(headers)
-    df_headers.to_csv(raw_data_filename, index=False)
-
-
     # Create a STAMP Session Sender object
     sender = STAMPSessionSender()
     sender.init(
         reflector_udp_port=args.reflector_port,
         interfaces=args.sender_iface, 
         stamp_source_ipv4_address=args.sender_ip, 
+        run_collector=args.collector is None
     )
 
     # Create ans start STAMP sessions 
@@ -109,30 +98,7 @@ def main():
             reflector_udp_port=args.reflector_port, 
             sender_udp_port=args.src_ports[i]
         )
-
-    # Start all sessions
-    [sender.start_stamp_session(i, only_collector=False) for i in range(args.num_flows)]
-
-    # Wait
-    end_time = time.perf_counter() + args.duration
-    remaining_time = end_time - time.perf_counter()
-    try:
-        while remaining_time > args.saving_period:
-            time.sleep(args.saving_period)
-            # Appending current data to disk to free up RAM space
-            append_results_to_csv(sender, args.num_flows, raw_data_filename)
-            remaining_time = end_time - time.perf_counter()
-        time.sleep(remaining_time)
-    except KeyboardInterrupt:
-        print('\nCTRL+C caught. Graceful stopping...')
-
-    # Stop all session
-    [sender.stop_stamp_session(ssid=i) for i in range(args.num_flows)]
-
-    # Save raw data to CSV
-    append_results_to_csv(sender, args.num_flows, raw_data_filename)
-
-
+    
     # save flow info
     flow_info = {
         "ssid": [],
@@ -152,14 +118,68 @@ def main():
     flow_info_df = pd.DataFrame(flow_info)
     flow_info_df.to_csv(flow_info_filename, index=False)
 
-    # Parse RTT from raw data
-    raw_data_df = pd.read_csv(raw_data_filename)
-    rtt_data_df = parse_rtt_by_flow(raw_data_df, 1)
-    rtt_data_df.to_csv(rtt_data_filename, index=False, sep=" ")
+
+    # Start all sessions
+    [sender.start_stamp_session(i, only_collector=False) for i in range(args.num_flows)]
+
+    if args.collector is None:
+        # Create CSV file for saving data
+        headers = {
+            "ssid": [],
+            "test_pkt_tx_timestamp": [],
+            "test_pkt_rx_timestamp": [],
+            "reply_pkt_tx_timestamp": [],
+            "reply_pkt_rx_timestamp": [],
+            
+        }
+        df_headers = pd.DataFrame(headers)
+        df_headers.to_csv(raw_data_filename, index=False)
+
+        # Wait
+        end_time = time.perf_counter() + args.duration
+        remaining_time = end_time - time.perf_counter()
+        try:
+            while remaining_time > args.saving_period:
+                time.sleep(args.saving_period)
+                # Appending current data to disk to free up RAM space
+                append_results_to_csv(sender, args.num_flows, raw_data_filename)
+                remaining_time = end_time - time.perf_counter()
+            time.sleep(remaining_time)
+        except KeyboardInterrupt:
+            print('\nCTRL+C caught. Graceful stopping...')
+        
+        # Save raw data to CSV
+        append_results_to_csv(sender, args.num_flows, raw_data_filename)
+    else:
+        # load collector
+        kern_file = args.collector.split('/')
+        kern_file[-1] = "collector_kern.o"
+        kern_file = '/'.join(kern_file)
+
+        load_collector_cmd = "%s --dev %s --filename %s --out-file %s --duration %d" % (args.collector, args.sender_iface[0], kern_file, raw_data_filename, args.duration)
+        logging.info("Loading collector: '%s'" % load_collector_cmd)
+        os.system(load_collector_cmd)
+
+    # Stop all session
+    [sender.stop_stamp_session(ssid=i) for i in range(args.num_flows)]
+
+    # Stop and unload collector
+    if args.collector is not None:
+        # time.sleep(10) # Wait for collector to finish processing and saving data
+        logging.info("Stopping collector: '%s --dev %s --unload-all'" % (args.collector, args.sender_iface[0]))
+        os.system("%s --dev %s --unload-all" % (args.collector, args.sender_iface[0]))
+
 
     # Close all STAMP session
     [sender.destroy_stamp_session(ssid=i) for i in range(args.num_flows)]
     sender.reset()
+
+    # Parse RTT
+    if args.collector is None:
+        # Parse RTT from raw data
+        raw_data_df = pd.read_csv(raw_data_filename)
+        rtt_data_df = parse_rtt_by_flow(raw_data_df, 1)
+        rtt_data_df.to_csv(rtt_data_filename, index=False, sep=" ")
 
 
 if __name__ == "__main__":
